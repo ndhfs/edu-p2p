@@ -103,7 +103,7 @@ func (s *TcpServer[T]) handleConn(conn *netClient[T]) {
 			return
 		}
 
-		var msg = make(hub.Msg, n)
+		var msg = make([]byte, n)
 		copy(msg, buff[:n])
 
 		decodedMsg, err := s.codec.Decode(msg)
