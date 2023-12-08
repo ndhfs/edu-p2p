@@ -2,9 +2,16 @@ package log
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 )
+
+var logger = log.New(os.Stdout, "", log.LstdFlags)
+
+func init() {
+	log.SetOutput(io.Discard)
+}
 
 func Info(format string, a ...any) {
 	Log("INFO", format, a...)
@@ -20,5 +27,5 @@ func Fatal(format string, a ...any) {
 }
 
 func Log(level string, format string, a ...any) {
-	log.Println(fmt.Errorf(level+" "+format, a...))
+	logger.Println(fmt.Errorf(level+" "+format, a...))
 }
