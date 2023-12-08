@@ -79,6 +79,10 @@ func (s *TcpServer[T]) Serve() error {
 	}
 }
 
+func (s *TcpServer[T]) Port() int {
+	return s.l.Addr().(*net.TCPAddr).Port
+}
+
 func (s *TcpServer[T]) Shutdown() error {
 	atomic.CompareAndSwapUint32(&s.closingFlag, 0, 1)
 	log.Info("Shutting down server on")

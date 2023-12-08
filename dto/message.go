@@ -4,9 +4,12 @@ type Common struct {
 	Message *Message `json:"message,omitempty"`
 }
 
-func NewTextMessage(text string) Common {
+func NewTextMessage(name string, text string) Common {
 	return Common{
 		Message: &Message{
+			From: Client{
+				Name: name,
+			},
 			Text: text,
 		},
 	}
