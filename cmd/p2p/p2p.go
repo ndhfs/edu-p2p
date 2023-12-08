@@ -14,6 +14,7 @@ import (
 	"p2p/log"
 	"p2p/p2p/registry"
 	"p2p/p2p/registry/mdns"
+	signal2 "p2p/p2p/registry/signal"
 	"p2p/server"
 	"p2p/server/hub"
 	"strings"
@@ -24,7 +25,12 @@ func main() {
 
 	// Дадим возможность указать свое имя
 	var peerName string
+	var registryType string
+	var signalAddr string
+
 	flag.StringVar(&peerName, "name", "", "set peer name")
+	flag.StringVar(&registryType, "registry", "mdns", "set registry type: mdns or signal")
+	flag.StringVar(&signalAddr, "signal-addr", "127.0.0.1:8086", "set signal server address")
 	flag.Parse()
 
 	// Ждем сигнала о завершении процесса
@@ -67,7 +73,13 @@ func main() {
 	}
 
 	// Создаем экземпляр реестра, мультикаст, чтобы сообщить о себе и найти другие пиры в сети
-	var reg registry.Registry = mdns.NewRegistry()
+	var reg registry.Registry
+	switch registryType {
+	case "mdns":
+		reg = mdns.NewRegistry()
+	case "signal":
+		reg = signal2.NewRegistry(signalAddr)
+	}
 	// Определим адрес, на котором мы слушаем сокет
 	addr := fmt.Sprintf("127.0.0.1:%d", srv.Port())
 	// Заявляем о себе в сети

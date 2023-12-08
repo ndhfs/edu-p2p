@@ -97,24 +97,14 @@ func (s *TcpServer[T]) handleConn(conn *netClient[T]) {
 		log.Info("Client disconnected: %s", conn.Name())
 	}()
 
-	var buff = make([]byte, 1024)
 	for {
-		n, err := conn.c.Read(buff)
+		msg, err := conn.Read(context.Background())
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
 				log.Err("error read msg from conn. %s, %w", conn.Id(), err)
 			}
 			return
 		}
-
-		var msg = make([]byte, n)
-		copy(msg, buff[:n])
-
-		decodedMsg, err := s.codec.Decode(msg)
-		if err != nil {
-			log.Err("error decode msg. %w", err)
-		}
-
-		s.handler.Handle(context.Background(), conn, decodedMsg)
+		s.handler.Handle(context.Background(), conn, msg)
 	}
 }
