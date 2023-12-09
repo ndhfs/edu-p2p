@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"github.com/google/uuid"
@@ -17,6 +18,7 @@ import (
 	signal2 "p2p/p2p/registry/signal"
 	"p2p/server"
 	"p2p/server/hub"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -165,7 +167,16 @@ func main() {
 				selectedPeerConn = peerConn
 				selectedPeer = &peer
 				log.Info("connected")
-
+			case "/file":
+				filePath := args[1]
+				mediaMessage, err := dto.NewMediaMessage(peerName, filePath)
+				if err != nil {
+					log.Err("error create message with file. %w", err)
+				}
+				if err := selectedPeerConn.Send(context.Background(), mediaMessage); err != nil {
+					log.Err("error send message to current peer. %w", err)
+				}
+				fmt.Printf("@You > @%s: [File: %s]\n", selectedPeer.Name, filePath)
 			default:
 				if selectedPeerConn == nil {
 					log.Err("No peer connected. Use /switch [@PeerName] to connect.")
@@ -174,12 +185,37 @@ func main() {
 
 				if err := selectedPeerConn.Send(context.Background(), dto.NewTextMessage(peerName, cmd)); err != nil {
 					log.Err("error send message to current peer. %w", err)
+					break
 				}
 				fmt.Printf("@You > @%s: %s\n", selectedPeer.Name, cmd)
 			}
 		// Входящее сообщение
 		case inMsg := <-incomingMessageCh:
-			fmt.Printf("@%s > @You: %s\n", inMsg.From.Name, inMsg.Text)
+			if inMsg.Media != nil {
+				storagePath := "storage/" + peerName
+				if _, err := os.Stat(storagePath); os.IsNotExist(err) {
+					if err := os.MkdirAll("storage/"+peerName, 0775); err != nil {
+						log.Err("error create storage dir. %w", err)
+						break
+					}
+				}
+
+				fileContent, err := base64.StdEncoding.DecodeString(inMsg.Media.Content)
+				if err != nil {
+					log.Err("error decode file content. %w", err)
+					break
+				}
+
+				filePath, _ := filepath.Abs(storagePath + "/" + inMsg.Media.Filename)
+				if err := os.WriteFile(filePath, fileContent, 0775); err != nil {
+					log.Err("error save file. %w", err)
+					break
+				}
+
+				fmt.Printf("@%s > @You: [File %s]\n", inMsg.From.Name, filePath)
+			} else {
+				fmt.Printf("@%s > @You: %s\n", inMsg.From.Name, inMsg.Text)
+			}
 		case <-doneCtx.Done():
 			_ = srv.Shutdown()
 			log.Info("shutdown server")

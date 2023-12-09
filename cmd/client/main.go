@@ -41,9 +41,9 @@ func main() {
 		scanner := bufio.NewScanner(os.Stdin)
 		for {
 			if scanner.Scan() {
-				msg := dto.NewTextMessage(scanner.Text())
+				msg := dto.NewTextMessage("", scanner.Text())
 				log.Info("You: %s", msg.Message.Text)
-				c.Send(context.Background(), dto.NewTextMessage(scanner.Text()))
+				c.Send(context.Background(), dto.NewTextMessage("", scanner.Text()))
 			}
 		}
 	}()
