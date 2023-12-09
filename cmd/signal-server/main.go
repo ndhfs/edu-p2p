@@ -12,6 +12,7 @@ import (
 	"p2p/log"
 	"p2p/server"
 	"p2p/server/hub"
+	"p2p/server/hub/persistent"
 )
 
 func main() {
@@ -27,9 +28,16 @@ func main() {
 		doneFn()
 	}()
 
+	persistHub, err := persistent.NewHub[dto.SignalCommon](
+		hub.NewInMemoryHub[dto.SignalCommon](100, 20),
+	)
+	if err != nil {
+		log.Fatal("error create persist hub. %w", err)
+	}
+
 	// Создаем хаб для сигнального сервера
 	clientsHub := hub2.NewSignalHub(
-		hub.NewInMemoryHub[dto.SignalCommon](100, 20),
+		persistHub,
 	)
 
 	jsonCodec := codec.NewJson[dto.SignalCommon]()

@@ -9,6 +9,7 @@ import (
 	"p2p/codec"
 	"p2p/log"
 	"p2p/server/hub"
+	"sync"
 	"sync/atomic"
 )
 
@@ -28,6 +29,8 @@ type TcpServer[T any] struct {
 	handler     Handler[T]
 	codec       codec.Codec[T]
 	closingFlag uint32
+	wg          sync.WaitGroup
+	conns       map[uint]*netClient[T]
 
 	l net.Listener
 }
@@ -43,6 +46,7 @@ func NewTcpServer[T any](
 		addr:    addr,
 		handler: handler,
 		codec:   codec,
+		conns:   make(map[uint]*netClient[T]),
 	}
 }
 
@@ -75,6 +79,8 @@ func (s *TcpServer[T]) Serve() error {
 			_ = conn.c.Close()
 		}
 
+		s.conns[conn.Id()] = conn
+		s.wg.Add(1)
 		go s.handleConn(conn)
 	}
 }
@@ -86,7 +92,12 @@ func (s *TcpServer[T]) Port() int {
 func (s *TcpServer[T]) Shutdown() error {
 	atomic.CompareAndSwapUint32(&s.closingFlag, 0, 1)
 	log.Info("Shutting down server on")
-	return s.l.Close()
+	s.l.Close()
+	for _, conn := range s.conns {
+		conn.c.Close()
+	}
+	s.wg.Wait()
+	return nil
 }
 
 func (s *TcpServer[T]) handleConn(conn *netClient[T]) {
@@ -94,7 +105,9 @@ func (s *TcpServer[T]) handleConn(conn *netClient[T]) {
 	defer func() {
 		_ = conn.c.Close()
 		s.hub.RemoveClient(context.Background(), conn)
+		delete(s.conns, conn.Id())
 		log.Info("Client disconnected: %s", conn.Name())
+		s.wg.Done()
 	}()
 
 	for {

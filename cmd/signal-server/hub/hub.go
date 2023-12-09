@@ -9,12 +9,12 @@ import (
 )
 
 type SignalHub struct {
-	*hub.InMemoryHub[dto.SignalCommon]
+	hub.Hub[dto.SignalCommon]
 	peers map[uint]dto.Peer
 }
 
-func NewSignalHub(inMemoryHub *hub.InMemoryHub[dto.SignalCommon]) *SignalHub {
-	return &SignalHub{InMemoryHub: inMemoryHub, peers: make(map[uint]dto.Peer)}
+func NewSignalHub(hub hub.Hub[dto.SignalCommon]) *SignalHub {
+	return &SignalHub{Hub: hub, peers: make(map[uint]dto.Peer)}
 }
 
 func (s *SignalHub) AddClient(ctx context.Context, c hub.Client[dto.SignalCommon]) error {
@@ -24,18 +24,18 @@ func (s *SignalHub) AddClient(ctx context.Context, c hub.Client[dto.SignalCommon
 		return fmt.Errorf("error handshake. %w", err)
 	}
 
-	if err := s.InMemoryHub.AddClient(ctx, cc); err != nil {
+	if err := s.Hub.AddClient(ctx, cc); err != nil {
 		return err
 	}
 
-	s.peers[cc.Id()] = cc.Peer
+	s.peers[cc.Id()] = cc.peer
 	s.notifyPeers()
 
 	return nil
 }
 
 func (s *SignalHub) RemoveClient(ctx context.Context, c hub.Client[dto.SignalCommon]) error {
-	if err := s.InMemoryHub.RemoveClient(ctx, c); err != nil {
+	if err := s.Hub.RemoveClient(ctx, c); err != nil {
 		return err
 	}
 
@@ -79,13 +79,17 @@ func (s *SignalHub) notifyPeers() {
 
 type NamedClient struct {
 	hub.Client[dto.SignalCommon]
-	dto.Peer
+	peer dto.Peer
 }
 
 func (n *NamedClient) Name() string {
-	return n.Peer.Name
+	return n.peer.Name
+}
+
+func (n *NamedClient) Addr() string {
+	return n.peer.Addr
 }
 
 func NewNamedClient(client hub.Client[dto.SignalCommon], name string, addr string) *NamedClient {
-	return &NamedClient{Client: client, Peer: dto.Peer{Name: name, Addr: addr}}
+	return &NamedClient{Client: client, peer: dto.Peer{Name: name, Addr: addr}}
 }

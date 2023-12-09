@@ -27,6 +27,10 @@ func (n *netClient[T]) Name() string {
 	return fmt.Sprintf("Client #%d", n.id)
 }
 
+func (n *netClient[T]) Addr() string {
+	return n.c.LocalAddr().String()
+}
+
 func (n *netClient[T]) Read(ctx context.Context) (msg T, err error) {
 	var buff = make([]byte, 1024)
 	size, err := n.c.Read(buff)
